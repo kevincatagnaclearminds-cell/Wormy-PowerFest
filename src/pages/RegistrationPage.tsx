@@ -29,8 +29,11 @@ import {
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
+  X,
   GripVertical,
-  Dumbbell } from
+  Dumbbell,
+  Edit2,
+  Save } from
 'lucide-react';
 // Sport type definition
 type Sport = {
@@ -120,14 +123,22 @@ export function RegistrationPage() {
     
     setIsResending(true);
     
-    // Simulate API call to resend both email and WhatsApp
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    setIsResending(false);
-    setResendCooldown(60); // 60 seconds cooldown
-    
-    // Show success message
-    alert('✅ QR reenviado por correo electrónico y WhatsApp');
+    try {
+      // Call API to resend notifications
+      const response = await registrationService.resendNotifications(ticketData.id);
+      
+      if (response.success) {
+        setResendCooldown(60); // 60 seconds cooldown
+        alert('✅ QR reenviado por correo electrónico y WhatsApp');
+      } else {
+        throw new Error(response.error || 'Error al reenviar');
+      }
+    } catch (error) {
+      console.error('Error al reenviar:', error);
+      alert('❌ Error al reenviar. Por favor, intenta de nuevo.');
+    } finally {
+      setIsResending(false);
+    }
   };
 
   // Open edit mode
@@ -678,14 +689,7 @@ export function RegistrationPage() {
                                 <span className="font-bold text-gray-800">
                                   {sport.label}
                                 </span>
-                                <button
-                          className="ml-auto text-gray-400 hover:text-red-500 transition-colors"
-                          onClick={() => {
-
-                            // Manual remove logic if needed, but drag back is preferred interaction
-                          }}>
-                                  <GripVertical className="w-5 h-5" />
-                                </button>
+                                <GripVertical className="ml-auto text-gray-300 w-5 h-5" />
                               </div>
                       }
                           </Draggable>

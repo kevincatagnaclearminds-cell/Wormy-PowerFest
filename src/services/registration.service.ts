@@ -104,4 +104,22 @@ export const registrationService = {
       data
     );
   },
+
+  /**
+   * Resend QR notifications (email and WhatsApp)
+   */
+  async resendNotifications(
+    id: string
+  ): Promise<ApiResponse<{
+    message: string;
+    notifications: {
+      email: { sent: boolean; messageId?: string };
+      whatsapp: { sent: boolean; messageId?: string };
+    };
+  }>> {
+    return apiService.post(
+      `${API_ENDPOINTS.GET_REGISTRATION_BY_ID(id)}/resend`,
+      {}
+    );
+  },
 };
