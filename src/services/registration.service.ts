@@ -9,6 +9,9 @@ export interface CreateRegistrationRequest {
   phone: string;
   email: string;
   sports: string[];
+  birthDate?: string;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY';
+  profession?: string;
 }
 
 // Response types
@@ -19,6 +22,9 @@ export interface RegistrationResponse {
   phone: string;
   email: string;
   sports: string[];
+  birthDate: string | null;
+  gender: 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY' | null;
+  profession: string | null;
   status: 'PENDING' | 'CHECKED_IN' | 'NO_SHOW';
   checkInTime: string | null;
   registrationDate: string;
@@ -54,13 +60,13 @@ export const registrationService = {
     offset?: number;
   }): Promise<ApiResponse<RegistrationResponse[]>> {
     let endpoint = API_ENDPOINTS.GET_REGISTRATIONS;
-    
+
     if (params) {
       const queryParams = new URLSearchParams();
       if (params.status) queryParams.append('status', params.status);
       if (params.limit) queryParams.append('limit', params.limit.toString());
       if (params.offset) queryParams.append('offset', params.offset.toString());
-      
+
       const queryString = queryParams.toString();
       if (queryString) {
         endpoint = `${endpoint}?${queryString}`;
@@ -106,7 +112,7 @@ export const registrationService = {
   },
 
   /**
-   * Resend QR notifications (email and WhatsApp)
+   * Resend QR notifications (email only)
    */
   async resendNotifications(
     id: string
@@ -114,12 +120,43 @@ export const registrationService = {
     message: string;
     notifications: {
       email: { sent: boolean; messageId?: string };
-      whatsapp: { sent: boolean; messageId?: string };
     };
   }>> {
     return apiService.post(
       `${API_ENDPOINTS.GET_REGISTRATION_BY_ID(id)}/resend`,
       {}
+    );
+  },
+
+  /**
+   * Send QR via WhatsApp to a specific phone number
+   */
+  async sendWhatsApp(
+    id: string,
+    phone: string
+  ): Promise<ApiResponse<{
+    message: string;
+    notification: { sent: boolean; messageId?: string };
+  }>> {
+    return apiService.post(
+      `${API_ENDPOINTS.GET_REGISTRATION_BY_ID(id)}/send-whatsapp`,
+      { phone }
+    );
+  },
+
+  /**
+   * Send QR to an alternative email
+   */
+  async sendAltEmail(
+    id: string,
+    email: string
+  ): Promise<ApiResponse<{
+    message: string;
+    notification: { sent: boolean; messageId?: string };
+  }>> {
+    return apiService.post(
+      `${API_ENDPOINTS.GET_REGISTRATION_BY_ID(id)}/send-alt-email`,
+      { email }
     );
   },
 };

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import QRCode from 'react-qr-code';
 import confetti from 'canvas-confetti';
 import {
   DragDropContext,
   Droppable,
   Draggable,
-  DropResult } from
-'@hello-pangea/dnd';
+  DropResult
+} from
+  '@hello-pangea/dnd';
 import { FestivalButton } from '../components/ui/FestivalButton';
 import { FestivalInput } from '../components/ui/FestivalInput';
 import { FestivalCard } from '../components/ui/FestivalCard';
@@ -29,12 +29,10 @@ import {
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
-  X,
   GripVertical,
-  Dumbbell,
-  Edit2,
-  Save } from
-'lucide-react';
+  Dumbbell
+} from
+  'lucide-react';
 // Sport type definition
 type Sport = {
   id: string;
@@ -43,30 +41,30 @@ type Sport = {
   color: string;
 };
 const AVAILABLE_SPORTS: Sport[] = [
-{
-  id: 'correr',
-  label: 'Correr',
-  emoji: '🏃',
-  color: 'border-l-magenta'
-},
-{
-  id: 'nadar',
-  label: 'Nadar',
-  emoji: '🏊',
-  color: 'border-l-violet'
-},
-{
-  id: 'gimnasio',
-  label: 'Gimnasio',
-  emoji: '💪',
-  color: 'border-l-yellow'
-},
-{
-  id: 'ninguno',
-  label: 'Ninguno',
-  emoji: '❌',
-  color: 'border-l-gray-400'
-}];
+  {
+    id: 'correr',
+    label: 'Correr',
+    emoji: '🏃',
+    color: 'border-l-magenta'
+  },
+  {
+    id: 'nadar',
+    label: 'Nadar',
+    emoji: '🏊',
+    color: 'border-l-violet'
+  },
+  {
+    id: 'gimnasio',
+    label: 'Gimnasio',
+    emoji: '💪',
+    color: 'border-l-yellow'
+  },
+  {
+    id: 'ninguno',
+    label: 'Ninguno',
+    emoji: '❌',
+    color: 'border-l-gray-400'
+  }];
 
 export function RegistrationPage() {
   const { addRegistration } = useEventData();
@@ -76,29 +74,34 @@ export function RegistrationPage() {
     firstName: '',
     lastName: '',
     phone: '',
-    email: ''
+    email: '',
+    birthDate: '',
+    gender: '' as 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY' | '',
+    profession: ''
   });
   // Validation Errors
   const [errors, setErrors] = useState({
     firstName: '',
     lastName: '',
     phone: '',
-    email: ''
+    email: '',
+    birthDate: '',
+    gender: '',
+    profession: ''
   });
   // Drag and Drop State
   const [availableSports, setAvailableSports] =
-  useState<Sport[]>(AVAILABLE_SPORTS);
+    useState<Sport[]>(AVAILABLE_SPORTS);
   const [selectedSports, setSelectedSports] = useState<Sport[]>([]);
   // Submission State
   const [ticketData, setTicketData] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEmailSent, setShowEmailSent] = useState(false);
-  const [showWhatsAppSent, setShowWhatsAppSent] = useState(false);
-  
+
   // Resend cooldown states
   const [resendCooldown, setResendCooldown] = useState(0);
   const [isResending, setIsResending] = useState(false);
-  
+
   // Edit mode state
   const [isEditMode, setIsEditMode] = useState(false);
   const [editData, setEditData] = useState({
@@ -109,6 +112,18 @@ export function RegistrationPage() {
     email: '',
     phone: ''
   });
+
+  // WhatsApp modal state
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [whatsappError, setWhatsappError] = useState('');
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+
+  // Alternative email modal state
+  const [showAltEmailModal, setShowAltEmailModal] = useState(false);
+  const [altEmail, setAltEmail] = useState('');
+  const [altEmailError, setAltEmailError] = useState('');
+  const [isSendingAltEmail, setIsSendingAltEmail] = useState(false);
   // Cooldown timer effect
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -117,19 +132,102 @@ export function RegistrationPage() {
     }
   }, [resendCooldown]);
 
+  // Open WhatsApp modal
+  const handleOpenWhatsAppModal = () => {
+    setWhatsappPhone(ticketData?.phone || '');
+    setWhatsappError('');
+    setShowWhatsAppModal(true);
+  };
+
+  // Send QR via WhatsApp
+  const handleSendWhatsApp = async () => {
+    if (!whatsappPhone.trim()) {
+      setWhatsappError(ERROR_MESSAGES.PHONE_REQUIRED);
+      return;
+    }
+    if (!validateEcuadorPhone(whatsappPhone)) {
+      setWhatsappError(ERROR_MESSAGES.PHONE_INVALID);
+      return;
+    }
+
+    setIsSendingWhatsApp(true);
+    try {
+      // Call backend to send WhatsApp
+      const response = await registrationService.sendWhatsApp(ticketData.id, whatsappPhone);
+      
+      if (response.success) {
+        alert('✅ QR enviado por WhatsApp exitosamente');
+        setShowWhatsAppModal(false);
+      } else {
+        throw new Error(response.error || 'Error al enviar WhatsApp');
+      }
+    } catch (error) {
+      console.error('Error al enviar WhatsApp:', error);
+      alert('❌ Error al enviar WhatsApp. Por favor, intenta de nuevo.');
+    } finally {
+      setIsSendingWhatsApp(false);
+    }
+  };
+
+  // Open alternative email modal
+  const handleOpenAltEmailModal = () => {
+    setAltEmail('');
+    setAltEmailError('');
+    setShowAltEmailModal(true);
+  };
+
+  // Send QR to alternative email
+  const handleSendAltEmail = async () => {
+    if (!altEmail.trim()) {
+      setAltEmailError(ERROR_MESSAGES.EMAIL_REQUIRED);
+      return;
+    }
+    if (!validateEmail(altEmail)) {
+      setAltEmailError(ERROR_MESSAGES.EMAIL_INVALID);
+      return;
+    }
+
+    setIsSendingAltEmail(true);
+    try {
+      // Call backend to send to alternative email
+      const response = await registrationService.sendAltEmail(ticketData.id, altEmail);
+      
+      if (response.success) {
+        alert('✅ QR enviado al correo alternativo exitosamente');
+        setShowAltEmailModal(false);
+      } else {
+        throw new Error(response.error || 'Error al enviar email');
+      }
+    } catch (error) {
+      console.error('Error al enviar email alternativo:', error);
+      alert('❌ Error al enviar email. Por favor, intenta de nuevo.');
+    } finally {
+      setIsSendingAltEmail(false);
+    }
+  };
+
+  // Handle WhatsApp phone input
+  const handleWhatsAppPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatEcuadorPhone(e.target.value);
+    setWhatsappPhone(formatted);
+    if (whatsappError) {
+      setWhatsappError('');
+    }
+  };
+
   // Resend function (both email and WhatsApp)
   const handleResend = async () => {
     if (resendCooldown > 0 || !ticketData) return;
-    
+
     setIsResending(true);
-    
+
     try {
       // Call API to resend notifications
       const response = await registrationService.resendNotifications(ticketData.id);
-      
+
       if (response.success) {
         setResendCooldown(60); // 60 seconds cooldown
-        alert('✅ QR reenviado por correo electrónico y WhatsApp');
+        alert('✅ QR reenviado por correo electrónico');
       } else {
         throw new Error(response.error || 'Error al reenviar');
       }
@@ -212,8 +310,8 @@ export function RegistrationPage() {
 
         setIsEditMode(false);
         setResendCooldown(60); // Start cooldown after edit
-        
-        alert('✅ Datos actualizados. QR reenviado a tu nuevo correo y teléfono.');
+
+        alert('✅ Datos actualizados. QR reenviado a tu nuevo correo.');
       } else {
         throw new Error(response.error || 'Error al actualizar datos');
       }
@@ -229,7 +327,7 @@ export function RegistrationPage() {
   const handleEditPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatEcuadorPhone(e.target.value);
     setEditData({ ...editData, phone: formatted });
-    
+
     if (editErrors.phone) {
       setEditErrors({ ...editErrors, phone: '' });
     }
@@ -241,7 +339,10 @@ export function RegistrationPage() {
       firstName: '',
       lastName: '',
       phone: '',
-      email: ''
+      email: '',
+      birthDate: '',
+      gender: '',
+      profession: ''
     };
 
     // Validate first name
@@ -272,6 +373,26 @@ export function RegistrationPage() {
       newErrors.email = ERROR_MESSAGES.EMAIL_INVALID;
     }
 
+    //validate birthDate
+    if (formData.birthDate) {
+      const birthDate = new Date(formData.birthDate);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+
+      if (isNaN(birthDate.getTime())) {
+        newErrors.birthDate = 'Fecha inválida';
+      } else if (age < 5) {
+        newErrors.birthDate = 'Debes tener al menos 5 años';
+      } else if (age > 120) {
+        newErrors.birthDate = 'Fecha inválida';
+      }
+    }
+
+    //validate profesión 
+    if (formData.profession && formData.profession.length > 100) {
+      newErrors.profession = 'Máximo 100 caracteres';
+    }
+
     setErrors(newErrors);
 
     // Return true if no errors
@@ -282,7 +403,7 @@ export function RegistrationPage() {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatEcuadorPhone(e.target.value);
     setFormData({ ...formData, phone: formatted });
-    
+
     // Clear error when user starts typing
     if (errors.phone) {
       setErrors({ ...errors, phone: '' });
@@ -297,9 +418,9 @@ export function RegistrationPage() {
     // Reordering within the same list
     if (source.droppableId === destination.droppableId) {
       const items =
-      source.droppableId === 'available-sports' ?
-      Array.from(availableSports) :
-      Array.from(selectedSports);
+        source.droppableId === 'available-sports' ?
+          Array.from(availableSports) :
+          Array.from(selectedSports);
       const [reorderedItem] = items.splice(source.index, 1);
       items.splice(destination.index, 0, reorderedItem);
       if (source.droppableId === 'available-sports') {
@@ -311,9 +432,8 @@ export function RegistrationPage() {
     }
     // Moving from available to selected
     if (
-    source.droppableId === 'available-sports' &&
-    destination.droppableId === 'selected-sports')
-    {
+      source.droppableId === 'available-sports' &&
+      destination.droppableId === 'selected-sports') {
       const sourceItems = Array.from(availableSports);
       const destItems = Array.from(selectedSports);
       const [movedItem] = sourceItems.splice(source.index, 1);
@@ -337,9 +457,8 @@ export function RegistrationPage() {
     }
     // Moving from selected to available (removing)
     if (
-    source.droppableId === 'selected-sports' &&
-    destination.droppableId === 'available-sports')
-    {
+      source.droppableId === 'selected-sports' &&
+      destination.droppableId === 'available-sports') {
       const sourceItems = Array.from(selectedSports);
       const destItems = Array.from(availableSports);
       const [movedItem] = sourceItems.splice(source.index, 1);
@@ -351,7 +470,7 @@ export function RegistrationPage() {
   // Handle form submission
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
+
     try {
       const sportsLabels = selectedSports.map((s) => s.label);
       const newTicket = await addRegistration(
@@ -359,12 +478,15 @@ export function RegistrationPage() {
         formData.lastName,
         formData.phone,
         formData.email,
-        sportsLabels
+        sportsLabels,
+        formData.birthDate || undefined,
+        formData.gender || undefined,
+        formData.profession || undefined
       );
-      
+
       setTicketData(newTicket);
       setStep(3);
-      
+
       // Trigger confetti
       const duration = 3000;
       const end = Date.now() + duration;
@@ -392,10 +514,9 @@ export function RegistrationPage() {
         }
       };
       frame();
-      
-      // Simulate sending notifications
+
+      // Show email sent notification
       setTimeout(() => setShowEmailSent(true), 1000);
-      setTimeout(() => setShowWhatsAppSent(true), 2000);
     } catch (error) {
       console.error('Error al registrar:', error);
       alert('Error al crear el registro. Por favor, intenta de nuevo.');
@@ -408,25 +529,30 @@ export function RegistrationPage() {
       firstName: '',
       lastName: '',
       phone: '',
-      email: ''
+      email: '',
+      birthDate: '',
+      gender: '',
+      profession: ''
     });
     setErrors({
       firstName: '',
       lastName: '',
       phone: '',
-      email: ''
+      email: '',
+      birthDate: '',
+      gender: '',
+      profession: ''
     });
     setAvailableSports(AVAILABLE_SPORTS);
     setSelectedSports([]);
     setStep(1);
     setTicketData(null);
     setShowEmailSent(false);
-    setShowWhatsAppSent(false);
     setResendCooldown(0);
   };
   const nextStep = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
       setStep(2);
     }
@@ -436,36 +562,36 @@ export function RegistrationPage() {
       {/* Progress Indicator */}
       <div className="flex justify-center mb-8 gap-3">
         {[1, 2, 3].map((s) =>
-        <div
-          key={s}
-          className={`w-3 h-3 rounded-full transition-colors duration-300 ${step >= s ? 'bg-magenta' : 'bg-gray-200'}`} />
+          <div
+            key={s}
+            className={`w-3 h-3 rounded-full transition-colors duration-300 ${step >= s ? 'bg-magenta' : 'bg-gray-200'}`} />
 
         )}
       </div>
 
       <AnimatePresence mode="wait">
         {step === 1 &&
-        <motion.div
-          key="step1"
-          initial={{
-            opacity: 0,
-            x: -20
-          }}
-          animate={{
-            opacity: 1,
-            x: 0
-          }}
-          exit={{
-            opacity: 0,
-            x: 20
-          }}
-          transition={{
-            duration: 0.3
-          }}>
+          <motion.div
+            key="step1"
+            initial={{
+              opacity: 0,
+              x: -20
+            }}
+            animate={{
+              opacity: 1,
+              x: 0
+            }}
+            exit={{
+              opacity: 0,
+              x: 20
+            }}
+            transition={{
+              duration: 0.3
+            }}>
 
             <div className="text-center mb-8">
               <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
-                Regístrate en Wormy PowerFest
+                Regístrate en Warmi PowerFest
               </h1>
               <p className="text-lg text-gray-600">
                 ¡El evento deportivo más divertido del año!
@@ -477,7 +603,7 @@ export function RegistrationPage() {
                 <Mail className="w-4 h-4" />
               </div>
               <p className="text-sm text-blue-800">
-                <strong>Importante:</strong> Los datos que ingreses serán utilizados para generar tu QR de entrada que te llegará al correo y teléfono.
+                <strong>Importante:</strong> Los datos que ingreses serán utilizados para generar tu QR de entrada que te llegará al correo electrónico.
               </p>
             </div>
 
@@ -485,49 +611,49 @@ export function RegistrationPage() {
               <form onSubmit={nextStep} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FestivalInput
-                  label="Nombre"
-                  placeholder="ej. Alex"
-                  value={formData.firstName}
-                  onChange={(e) => {
-                    setFormData({
-                      ...formData,
-                      firstName: e.target.value
-                    });
-                    if (errors.firstName) {
-                      setErrors({ ...errors, firstName: '' });
-                    }
-                  }}
-                  error={errors.firstName}
-                  required />
+                    label="Nombre"
+                    placeholder="ej. Alex"
+                    value={formData.firstName}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        firstName: e.target.value
+                      });
+                      if (errors.firstName) {
+                        setErrors({ ...errors, firstName: '' });
+                      }
+                    }}
+                    error={errors.firstName}
+                    required />
 
                   <FestivalInput
-                  label="Apellido"
-                  placeholder="ej. Rivera"
-                  value={formData.lastName}
-                  onChange={(e) => {
-                    setFormData({
-                      ...formData,
-                      lastName: e.target.value
-                    });
-                    if (errors.lastName) {
-                      setErrors({ ...errors, lastName: '' });
-                    }
-                  }}
-                  error={errors.lastName}
-                  required />
+                    label="Apellido"
+                    placeholder="ej. Rivera"
+                    value={formData.lastName}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        lastName: e.target.value
+                      });
+                      if (errors.lastName) {
+                        setErrors({ ...errors, lastName: '' });
+                      }
+                    }}
+                    error={errors.lastName}
+                    required />
 
                 </div>
 
                 <div>
                   <FestivalInput
-                  label="Teléfono"
-                  type="tel"
-                  placeholder="0990900990"
-                  value={formData.phone}
-                  onChange={handlePhoneChange}
-                  error={errors.phone}
-                  maxLength={10}
-                  required />
+                    label="Teléfono"
+                    type="tel"
+                    placeholder="0990900990"
+                    value={formData.phone}
+                    onChange={handlePhoneChange}
+                    error={errors.phone}
+                    maxLength={10}
+                    required />
                   {!errors.phone && (
                     <p className="text-xs text-gray-500 mt-1 ml-1">
                       Ingresa 10 dígitos, empezando con 09
@@ -537,21 +663,91 @@ export function RegistrationPage() {
 
 
                 <FestivalInput
-                label="Correo Electrónico"
-                type="email"
-                placeholder="alex@ejemplo.com"
-                value={formData.email}
-                onChange={(e) => {
-                  setFormData({
-                    ...formData,
-                    email: e.target.value
-                  });
-                  if (errors.email) {
-                    setErrors({ ...errors, email: '' });
-                  }
-                }}
-                error={errors.email}
-                required />
+                  label="Correo Electrónico"
+                  type="email"
+                  placeholder="alex@ejemplo.com"
+                  value={formData.email}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      email: e.target.value
+                    });
+                    if (errors.email) {
+                      setErrors({ ...errors, email: '' });
+                    }
+                  }}
+                  error={errors.email}
+                  required />
+
+                <div>
+                  <FestivalInput
+                    label="Fecha de Nacimiento"
+                    type="date"
+                    value={formData.birthDate}
+                    onChange={(e) => {
+                      setFormData({ ...formData, birthDate: e.target.value });
+                      if (errors.birthDate) {
+                        setErrors({ ...errors, birthDate: '' });
+                      }
+                    }}
+                    max={new Date().toISOString().split('T')[0]}
+                    className={`w-full px-4 py-3 rounded-xl border-2 transition-colors ${errors.birthDate
+                      ? 'border-red-300 focus:border-red-500'
+                      : 'border-gray-200 focus:border-magenta'
+                      }`}
+                  />
+                  {errors.birthDate && (
+                    <p className="text-red-500 text-sm mt-1">{errors.birthDate}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Género
+                  </label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        gender: e.target.value as typeof formData.gender
+                      });
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-magenta transition-colors"
+                  >
+                    <option value="">Selecciona una opción</option>
+                    <option value="MALE">Masculino</option>
+                    <option value="FEMALE">Femenino</option>
+                    <option value="OTHER">Otro</option>
+                    <option value="PREFER_NOT_TO_SAY">Prefiero no decir</option>
+                  </select>
+                </div>
+
+                <div>
+                  <FestivalInput
+                    label="Profesión"
+                    type="text"
+                    placeholder="ej. Ingeniero, Estudiante, etc."
+                    value={formData.profession}
+                    onChange={(e) => {
+                      setFormData({ ...formData, profession: e.target.value });
+                      if (errors.profession) {
+                        setErrors({ ...errors, profession: '' });
+                      }
+                    }}
+                    maxLength={100}
+                    className={`w-full px-4 py-3 rounded-xl border-2 transition-colors ${errors.profession
+                      ? 'border-red-300 focus:border-red-500'
+                      : 'border-gray-200 focus:border-magenta'
+                      }`}
+                  />
+                  {errors.profession && (
+                    <p className="text-red-500 text-sm mt-1">{errors.profession}</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formData.profession.length}/100 caracteres
+                  </p>
+                </div>
 
 
                 <div className="pt-4 flex justify-end">
@@ -565,23 +761,23 @@ export function RegistrationPage() {
         }
 
         {step === 2 &&
-        <motion.div
-          key="step2"
-          initial={{
-            opacity: 0,
-            x: 20
-          }}
-          animate={{
-            opacity: 1,
-            x: 0
-          }}
-          exit={{
-            opacity: 0,
-            x: -20
-          }}
-          transition={{
-            duration: 0.3
-          }}>
+          <motion.div
+            key="step2"
+            initial={{
+              opacity: 0,
+              x: 20
+            }}
+            animate={{
+              opacity: 1,
+              x: 0
+            }}
+            exit={{
+              opacity: 0,
+              x: -20
+            }}
+            transition={{
+              duration: 0.3
+            }}>
 
             <div className="text-center mb-8">
               <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
@@ -601,31 +797,31 @@ export function RegistrationPage() {
                   </h3>
                   <Droppable droppableId="available-sports">
                     {(provided, snapshot) =>
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className={`
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className={`
                           min-h-[300px] p-4 rounded-2xl border-2 border-dashed transition-colors duration-200
                           ${snapshot.isDraggingOver ? 'border-magenta bg-magenta/5' : 'border-gray-200 bg-gray-50'}
                         `}>
 
                         {availableSports.map((sport, index) =>
-                    <Draggable
-                      key={sport.id}
-                      draggableId={sport.id}
-                      index={index}>
+                          <Draggable
+                            key={sport.id}
+                            draggableId={sport.id}
+                            index={index}>
 
                             {(provided, snapshot) =>
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        className={`
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`
                                   bg-white p-4 mb-3 rounded-xl shadow-sm border-l-4 ${sport.color}
                                   flex items-center gap-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-all
                                   ${snapshot.isDragging ? 'scale-105 shadow-xl rotate-2 z-50' : ''}
                                 `}
-                        style={provided.draggableProps.style}>
+                                style={provided.draggableProps.style}>
 
                                 <span className="text-2xl">{sport.emoji}</span>
                                 <span className="font-bold text-gray-800">
@@ -633,12 +829,12 @@ export function RegistrationPage() {
                                 </span>
                                 <GripVertical className="ml-auto text-gray-300 w-5 h-5" />
                               </div>
-                      }
+                            }
                           </Draggable>
-                    )}
+                        )}
                         {provided.placeholder}
                       </div>
-                  }
+                    }
                   </Droppable>
                 </div>
 
@@ -649,41 +845,41 @@ export function RegistrationPage() {
                   </h3>
                   <Droppable droppableId="selected-sports">
                     {(provided, snapshot) =>
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className={`
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className={`
                           min-h-[300px] p-4 rounded-2xl border-2 transition-colors duration-200 relative
                           ${snapshot.isDraggingOver ? 'border-violet bg-violet/5' : 'border-violet/30 bg-white'}
                         `}>
 
                         {selectedSports.length === 0 &&
-                    !snapshot.isDraggingOver &&
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
-                              <Dumbbell className="w-12 h-12 mb-2 opacity-20" />
-                              <p className="text-sm font-medium">
-                                Suelta aquí tus deportes favoritos
-                              </p>
-                            </div>
-                    }
+                          !snapshot.isDraggingOver &&
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
+                            <Dumbbell className="w-12 h-12 mb-2 opacity-20" />
+                            <p className="text-sm font-medium">
+                              Suelta aquí tus deportes favoritos
+                            </p>
+                          </div>
+                        }
 
                         {selectedSports.map((sport, index) =>
-                    <Draggable
-                      key={sport.id}
-                      draggableId={sport.id}
-                      index={index}>
+                          <Draggable
+                            key={sport.id}
+                            draggableId={sport.id}
+                            index={index}>
 
                             {(provided, snapshot) =>
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        className={`
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`
                                   bg-white p-4 mb-3 rounded-xl shadow-sm border border-gray-100
                                   flex items-center gap-3 cursor-grab active:cursor-grabbing
                                   ${snapshot.isDragging ? 'scale-105 shadow-xl rotate-2 z-50' : ''}
                                 `}
-                        style={provided.draggableProps.style}>
+                                style={provided.draggableProps.style}>
 
                                 <span className="text-2xl">{sport.emoji}</span>
                                 <span className="font-bold text-gray-800">
@@ -691,12 +887,12 @@ export function RegistrationPage() {
                                 </span>
                                 <GripVertical className="ml-auto text-gray-300 w-5 h-5" />
                               </div>
-                      }
+                            }
                           </Draggable>
-                    )}
+                        )}
                         {provided.placeholder}
                       </div>
-                  }
+                    }
                   </Droppable>
                 </div>
               </div>
@@ -704,18 +900,18 @@ export function RegistrationPage() {
 
             <div className="pt-8 flex justify-between items-center">
               <FestivalButton
-              variant="ghost"
-              onClick={() => setStep(1)}
-              disabled={isSubmitting}>
+                variant="ghost"
+                onClick={() => setStep(1)}
+                disabled={isSubmitting}>
 
                 <ArrowLeft className="w-5 h-5 mr-2" /> Volver
               </FestivalButton>
 
               <FestivalButton
-              onClick={handleSubmit}
-              size="lg"
-              isLoading={isSubmitting}
-              disabled={selectedSports.length === 0}>
+                onClick={handleSubmit}
+                size="lg"
+                isLoading={isSubmitting}
+                disabled={selectedSports.length === 0}>
 
                 {isSubmitting ? 'Generando...' : 'Completar Registro'}{' '}
                 <Sparkles className="w-5 h-5 ml-2" />
@@ -725,21 +921,21 @@ export function RegistrationPage() {
         }
 
         {step === 3 && ticketData &&
-        <motion.div
-          key="step3"
-          initial={{
-            opacity: 0,
-            scale: 0.9
-          }}
-          animate={{
-            opacity: 1,
-            scale: 1
-          }}
-          transition={{
-            type: 'spring',
-            duration: 0.6
-          }}
-          className="flex flex-col items-center">
+          <motion.div
+            key="step3"
+            initial={{
+              opacity: 0,
+              scale: 0.9
+            }}
+            animate={{
+              opacity: 1,
+              scale: 1
+            }}
+            transition={{
+              type: 'spring',
+              duration: 0.6
+            }}
+            className="flex flex-col items-center">
 
             <div className="text-center mb-8">
               <h2 className="text-3xl font-extrabold text-gray-900 mb-2">
@@ -762,7 +958,7 @@ export function RegistrationPage() {
                     ENTRADA OFICIAL
                   </span>
                   <h3 className="text-2xl font-extrabold mb-1 flex items-center gap-2">
-                    <Dumbbell className="w-6 h-6" /> WORMY POWERFEST
+                    <Dumbbell className="w-6 h-6" /> WARMI POWERFEST
                   </h3>
                   <p className="text-white/80 text-sm font-medium">
                     Válido para una entrada
@@ -812,13 +1008,13 @@ export function RegistrationPage() {
                       </p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {ticketData.sports.map((sport: string) =>
-                      <span
-                        key={sport}
-                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                          <span
+                            key={sport}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
 
                             {sport}
                           </span>
-                      )}
+                        )}
                       </div>
                     </div>
                   </div>
@@ -835,15 +1031,23 @@ export function RegistrationPage() {
                   </div>
                 </div>
 
-                {/* Right Column - QR Code */}
+                {/* Right Column - Email Confirmation Message */}
                 <div className="flex flex-col items-center justify-center border-l-2 border-dashed border-gray-200 pl-6">
-                  <div className="bg-white p-4 rounded-xl border-4 border-gray-900 shadow-sm">
-                    <QRCode
-                    value={ticketData.id}
-                    size={180}
-                    level="H"
-                    fgColor="#1a1a1a" />
-
+                  <div className="bg-gradient-to-br from-magenta/10 to-violet/10 p-8 rounded-xl border-2 border-magenta/20">
+                    <div className="text-center">
+                      <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-magenta to-violet rounded-full flex items-center justify-center">
+                        <Mail className="w-10 h-10 text-white" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">
+                        ¡QR Enviado!
+                      </h3>
+                      <p className="text-gray-600 text-sm leading-relaxed">
+                        Tu código QR ha sido enviado a tu correo electrónico
+                      </p>
+                      <p className="text-magenta font-bold text-sm mt-2">
+                        {ticketData.email}
+                      </p>
+                    </div>
                   </div>
                   <p className="mt-4 text-xs text-gray-400 font-mono text-center">
                     ID: {ticketData.id}
@@ -855,51 +1059,66 @@ export function RegistrationPage() {
             {/* Sending Status */}
             <div className="w-full max-w-4xl space-y-3 mb-8">
               <AnimatePresence>
-                {(showEmailSent || showWhatsAppSent) &&
-              <motion.div
-                initial={{
-                  opacity: 0,
-                  y: 10
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0
-                }}
-                className="bg-green-50 border border-green-200 rounded-lg p-4">
+                {showEmailSent &&
+                  <motion.div
+                    initial={{
+                      opacity: 0,
+                      y: 10
+                    }}
+                    animate={{
+                      opacity: 1,
+                      y: 0
+                    }}
+                    className="bg-green-50 border border-green-200 rounded-lg p-4">
 
-                    <div className="flex items-start gap-3 mb-3">
+                    <div className="flex items-start gap-3 mb-4">
                       <div className="bg-green-100 p-1 rounded-full text-green-600 mt-0.5">
                         <CheckCircle2 className="w-5 h-5" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-green-800 mb-1">
-                          QR enviado por correo electrónico a {ticketData.email}
-                        </p>
                         <p className="text-sm font-medium text-green-800">
-                          QR enviado por WhatsApp a {ticketData.phone}
+                          QR enviado por correo electrónico a {ticketData.email}
                         </p>
                       </div>
                     </div>
-                    
-                    <div className="ml-9">
+
+                    {/* Action Buttons */}
+                    <div className="ml-9 space-y-2">
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={handleOpenWhatsAppModal}
+                          className="text-sm font-medium text-violet hover:text-violet/80 underline transition-colors flex items-center gap-1"
+                        >
+                          <Phone className="w-4 h-4" />
+                          Enviar por WhatsApp
+                        </button>
+                        
+                        <button
+                          onClick={handleOpenAltEmailModal}
+                          className="text-sm font-medium text-magenta hover:text-magenta/80 underline transition-colors flex items-center gap-1"
+                        >
+                          <Mail className="w-4 h-4" />
+                          Enviar por otro correo
+                        </button>
+                      </div>
+
                       <button
                         onClick={handleResend}
                         disabled={resendCooldown > 0 || isResending}
-                        className={`text-sm font-medium transition-colors ${
-                          resendCooldown > 0 || isResending
-                            ? 'text-gray-400 cursor-not-allowed'
-                            : 'text-green-700 hover:text-green-900 underline'
-                        }`}
+                        className={`text-sm font-medium transition-colors ${resendCooldown > 0 || isResending
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-green-700 hover:text-green-900 underline'
+                          }`}
                       >
                         {isResending
                           ? 'Reenviando...'
                           : resendCooldown > 0
-                          ? `Reenviar en ${resendCooldown}s`
-                          : '¿No te llegó? Reenviar'}
+                            ? `Reenviar en ${resendCooldown}s`
+                            : '¿No te llegó? Reenviar al correo'}
                       </button>
                     </div>
                   </motion.div>
-              }
+                }
               </AnimatePresence>
             </div>
 
@@ -933,7 +1152,7 @@ export function RegistrationPage() {
                 Editar Datos
               </h3>
               <p className="text-gray-600 mb-6">
-                Actualiza tu correo o teléfono. Se reenviará el QR automáticamente.
+                Actualiza tu correo o teléfono. Se reenviará el QR a tu correo.
               </p>
 
               <div className="space-y-4 mb-6">
@@ -989,6 +1208,153 @@ export function RegistrationPage() {
                   fullWidth
                 >
                   {isSubmitting ? 'Guardando...' : 'Guardar y Reenviar'}
+                </FestivalButton>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* WhatsApp Modal */}
+      <AnimatePresence>
+        {showWhatsAppModal && ticketData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowWhatsAppModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-violet/10 flex items-center justify-center">
+                  <Phone className="w-6 h-6 text-violet" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-extrabold text-gray-900">
+                    Enviar por WhatsApp
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Ingresa el número de teléfono
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div>
+                  <FestivalInput
+                    label="Número de WhatsApp"
+                    type="tel"
+                    placeholder="0990900990"
+                    value={whatsappPhone}
+                    onChange={handleWhatsAppPhoneChange}
+                    error={whatsappError}
+                    maxLength={10}
+                    required
+                  />
+                  {!whatsappError && (
+                    <p className="text-xs text-gray-500 mt-1 ml-1">
+                      Ingresa 10 dígitos, empezando con 09
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <FestivalButton
+                  variant="ghost"
+                  onClick={() => setShowWhatsAppModal(false)}
+                  disabled={isSendingWhatsApp}
+                  fullWidth
+                >
+                  Cancelar
+                </FestivalButton>
+                <FestivalButton
+                  onClick={handleSendWhatsApp}
+                  isLoading={isSendingWhatsApp}
+                  disabled={isSendingWhatsApp}
+                  fullWidth
+                >
+                  {isSendingWhatsApp ? 'Enviando...' : 'Enviar QR'}
+                </FestivalButton>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Alternative Email Modal */}
+      <AnimatePresence>
+        {showAltEmailModal && ticketData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAltEmailModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-magenta/10 flex items-center justify-center">
+                  <Mail className="w-6 h-6 text-magenta" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-extrabold text-gray-900">
+                    Enviar por otro correo
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Ingresa el correo alternativo
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div>
+                  <FestivalInput
+                    label="Correo Electrónico"
+                    type="email"
+                    placeholder="correo@ejemplo.com"
+                    value={altEmail}
+                    onChange={(e) => {
+                      setAltEmail(e.target.value);
+                      if (altEmailError) {
+                        setAltEmailError('');
+                      }
+                    }}
+                    error={altEmailError}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <FestivalButton
+                  variant="ghost"
+                  onClick={() => setShowAltEmailModal(false)}
+                  disabled={isSendingAltEmail}
+                  fullWidth
+                >
+                  Cancelar
+                </FestivalButton>
+                <FestivalButton
+                  onClick={handleSendAltEmail}
+                  isLoading={isSendingAltEmail}
+                  disabled={isSendingAltEmail}
+                  fullWidth
+                >
+                  {isSendingAltEmail ? 'Enviando...' : 'Enviar QR'}
                 </FestivalButton>
               </div>
             </motion.div>

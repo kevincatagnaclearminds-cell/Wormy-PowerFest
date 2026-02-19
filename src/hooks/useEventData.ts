@@ -67,9 +67,9 @@ export function useEventData() {
   const fetchAttendees = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     const response = await registrationService.getAll();
-    
+
     if (response.success && response.data) {
       const mappedAttendees = response.data.map((reg) => ({
         id: reg.id,
@@ -86,14 +86,14 @@ export function useEventData() {
     } else {
       setError(response.error || 'Error al cargar registros');
     }
-    
+
     setIsLoading(false);
   };
 
   // Fetch stats
   const fetchStats = async () => {
     const response = await statsService.getStats();
-    
+
     if (response.success && response.data) {
       const mappedScans = response.data.recentScans.map((scan) => ({
         id: scan.id,
@@ -125,19 +125,25 @@ export function useEventData() {
 
   // Add registration
   const addRegistration = async (
-    firstName: string,
-    lastName: string,
-    phone: string,
-    email: string,
-    sports: string[]
-  ): Promise<Attendee> => {
-    const response = await registrationService.create({
-      firstName,
-      lastName,
-      phone,
-      email,
-      sports,
-    });
+  firstName: string,
+  lastName: string,
+  phone: string,
+  email: string,
+  sports: string[],
+  birthDate?: string,  // ✨ NUEVO
+  gender?: 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY',  // ✨ NUEVO
+  profession?: string  // ✨ NUEVO
+) => {
+  const response = await registrationService.create({
+    firstName,
+    lastName,
+    phone,
+    email,
+    sports,
+    birthDate, 
+    gender,     
+    profession  
+  });
 
     if (response.success && response.data) {
       const newAttendee: Attendee = {
@@ -154,7 +160,7 @@ export function useEventData() {
 
       setAttendees((prev) => [newAttendee, ...prev]);
       fetchStats(); // Update stats
-      
+
       return newAttendee;
     } else {
       throw new Error(response.error || 'Error al crear registro');
@@ -190,7 +196,7 @@ export function useEventData() {
         setAttendees((prev) =>
           prev.map((a) => (a.id === ticketId ? attendee : a))
         );
-        
+
         fetchStats(); // Update stats
 
         return { status, attendee };

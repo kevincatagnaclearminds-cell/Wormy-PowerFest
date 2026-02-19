@@ -25,7 +25,7 @@ export function AdminDashboard() {
       return;
     }
     
-    const filename = `wormy-powerfest-${new Date().toISOString().split('T')[0]}.csv`;
+    const filename = `warmi-powerfest-${new Date().toISOString().split('T')[0]}.csv`;
     downloadCSV(attendees, filename);
   };
 
@@ -115,7 +115,7 @@ export function AdminDashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900">
-            Panel Wormy PowerFest
+            Panel Warmi PowerFest
           </h1>
           <p className="text-gray-600">
             Vista en tiempo real de registros y accesos

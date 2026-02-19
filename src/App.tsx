@@ -29,11 +29,11 @@ export function App() {
             <div className="flex items-center gap-3">
               <img 
                 src={logoHeader} 
-                alt="Wormy PowerFest Logo" 
+                alt="Warmi PowerFest Logo" 
                 className="h-12 w-auto object-contain"
               />
               <span className="text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-magenta to-violet">
-                WORMY<span className="text-gray-900">POWERFEST</span>
+                WARMI<span className="text-gray-900">POWERFEST</span>
               </span>
             </div>
 

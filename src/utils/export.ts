@@ -58,7 +58,7 @@ export const convertToCSV = (data: Attendee[]): string => {
 /**
  * Descarga un archivo CSV
  */
-export const downloadCSV = (data: Attendee[], filename: string = 'registros-wormy-powerfest.csv') => {
+export const downloadCSV = (data: Attendee[], filename: string = 'registros-warmi-powerfest.csv') => {
   const csv = convertToCSV(data);
   
   // Add BOM for UTF-8 to ensure Excel recognizes special characters
@@ -94,7 +94,7 @@ export const generatePrintHTML = (data: Attendee[], stats: any): string => {
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>Reporte Wormy PowerFest</title>
+      <title>Reporte Warmi PowerFest</title>
       <style>
         @media print {
           @page {
@@ -214,7 +214,7 @@ export const generatePrintHTML = (data: Attendee[], stats: any): string => {
     </head>
     <body>
       <div class="header">
-        <h1>WORMY POWERFEST</h1>
+        <h1>WARMI POWERFEST</h1>
         <p>Reporte de Registros</p>
         <p>Generado: ${now}</p>
       </div>
@@ -280,7 +280,7 @@ export const generatePrintHTML = (data: Attendee[], stats: any): string => {
       </table>
       
       <div class="footer">
-        <p>Wormy PowerFest - Sistema de Registro</p>
+        <p>Warmi PowerFest - Sistema de Registro</p>
         <p>Total de registros: ${data.length}</p>
       </div>
     </body>
