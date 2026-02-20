@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Ticket, BarChart3 } from 'lucide-react';
 import { RegistrationPage } from './pages/RegistrationPage';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { Footer } from './components/ui/Footer';
 import logoHeader from './assets/logos/logo-header.jpeg';
 type View = 'register' | 'dashboard';
 export function App() {
@@ -13,14 +14,15 @@ export function App() {
     label: 'Registro',
     icon: Ticket
   },
-  {
-    id: 'dashboard',
-    label: 'Panel',
-    icon: BarChart3
-  }];
+  //{
+    //id: 'dashboard',
+    //label: 'Panel',
+    //icon: BarChart3
+  //}
+];
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-magenta/30">
+    <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-magenta/30 flex flex-col">
       {/* Navigation Bar */}
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4">
@@ -32,9 +34,6 @@ export function App() {
                 alt="Warmi PowerFest Logo" 
                 className="h-12 w-auto object-contain"
               />
-              <span className="hidden md:inline text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-magenta to-violet">
-                WARMI<span className="text-gray-900">POWERFEST</span>
-              </span>
             </div>
 
             {/* Tabs */}
@@ -76,7 +75,7 @@ export function App() {
       </nav>
 
       {/* Main Content */}
-      <main className="w-full">
+      <main className="w-full flex-1">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeView}
@@ -102,6 +101,9 @@ export function App() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Footer */}
+      <Footer />
     </div>);
 
 }

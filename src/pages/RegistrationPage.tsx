@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult
-} from
-  '@hello-pangea/dnd';
 import { FestivalButton } from '../components/ui/FestivalButton';
 import { FestivalInput } from '../components/ui/FestivalInput';
 import { FestivalCard } from '../components/ui/FestivalCard';
+import { EmailInput } from '../components/ui/EmailInput';
 import { useEventData } from '../hooks/useEventData';
 import { registrationService } from '../services';
 import {
@@ -18,6 +12,10 @@ import {
   formatEcuadorPhone,
   validateEmail,
   validateName,
+  validateEcuadorCedula,
+  formatEcuadorCedula,
+  validateEdad,
+  validateSector,
   ERROR_MESSAGES,
 } from '../utils/validation';
 import {
@@ -29,7 +27,6 @@ import {
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
-  GripVertical,
   Dumbbell
 } from
   'lucide-react';
@@ -92,10 +89,11 @@ export function RegistrationPage() {
     firstName: '',
     lastName: '',
     phone: '',
-    email: '',
-    birthDate: '',
-    gender: '' as 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY' | '',
-    profession: ''
+    emailUsername: '',
+    emailDomain: '@gmail.com',
+    cedula: '',
+    edad: '',
+    sector: ''
   });
   // Validation Errors
   const [errors, setErrors] = useState({
@@ -103,14 +101,12 @@ export function RegistrationPage() {
     lastName: '',
     phone: '',
     email: '',
-    birthDate: '',
-    gender: '',
-    profession: ''
+    cedula: '',
+    edad: '',
+    sector: ''
   });
-  // Drag and Drop State
-  const [availableSports, setAvailableSports] =
-    useState<Sport[]>(AVAILABLE_SPORTS);
-  const [selectedSports, setSelectedSports] = useState<Sport[]>([]);
+  // Sports selection state
+  const [selectedSports, setSelectedSports] = useState<string[]>([]);
   // Submission State
   const [ticketData, setTicketData] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,12 +127,6 @@ export function RegistrationPage() {
     phone: ''
   });
 
-  // WhatsApp modal state
-  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
-  const [whatsappPhone, setWhatsappPhone] = useState('');
-  const [whatsappError, setWhatsappError] = useState('');
-  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
-
   // Alternative email modal state
   const [showAltEmailModal, setShowAltEmailModal] = useState(false);
   const [altEmail, setAltEmail] = useState('');
@@ -149,43 +139,6 @@ export function RegistrationPage() {
       return () => clearTimeout(timer);
     }
   }, [resendCooldown]);
-
-  // Open WhatsApp modal
-  const handleOpenWhatsAppModal = () => {
-    setWhatsappPhone(ticketData?.phone || '');
-    setWhatsappError('');
-    setShowWhatsAppModal(true);
-  };
-
-  // Send QR via WhatsApp
-  const handleSendWhatsApp = async () => {
-    if (!whatsappPhone.trim()) {
-      setWhatsappError(ERROR_MESSAGES.PHONE_REQUIRED);
-      return;
-    }
-    if (!validateEcuadorPhone(whatsappPhone)) {
-      setWhatsappError(ERROR_MESSAGES.PHONE_INVALID);
-      return;
-    }
-
-    setIsSendingWhatsApp(true);
-    try {
-      // Call backend to send WhatsApp
-      const response = await registrationService.sendWhatsApp(ticketData.id, whatsappPhone);
-
-      if (response.success) {
-        alert('✅ QR enviado por WhatsApp exitosamente');
-        setShowWhatsAppModal(false);
-      } else {
-        throw new Error(response.error || 'Error al enviar WhatsApp');
-      }
-    } catch (error) {
-      console.error('Error al enviar WhatsApp:', error);
-      alert('❌ Error al enviar WhatsApp. Por favor, intenta de nuevo.');
-    } finally {
-      setIsSendingWhatsApp(false);
-    }
-  };
 
   // Open alternative email modal
   const handleOpenAltEmailModal = () => {
@@ -224,16 +177,7 @@ export function RegistrationPage() {
     }
   };
 
-  // Handle WhatsApp phone input
-  const handleWhatsAppPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatEcuadorPhone(e.target.value);
-    setWhatsappPhone(formatted);
-    if (whatsappError) {
-      setWhatsappError('');
-    }
-  };
-
-  // Resend function (both email and WhatsApp)
+  // Resend function
   const handleResend = async () => {
     if (resendCooldown > 0 || !ticketData) return;
 
@@ -358,9 +302,9 @@ export function RegistrationPage() {
       lastName: '',
       phone: '',
       email: '',
-      birthDate: '',
-      gender: '',
-      profession: ''
+      cedula: '',
+      edad: '',
+      sector: ''
     };
 
     // Validate first name
@@ -384,31 +328,36 @@ export function RegistrationPage() {
       newErrors.phone = ERROR_MESSAGES.PHONE_INVALID;
     }
 
-    // Validate email
-    if (!formData.email.trim()) {
+    // Validate email (username + domain)
+    const fullEmail = formData.emailUsername + formData.emailDomain;
+    if (!formData.emailUsername.trim()) {
       newErrors.email = ERROR_MESSAGES.EMAIL_REQUIRED;
-    } else if (!validateEmail(formData.email)) {
+    } else if (!validateEmail(fullEmail)) {
       newErrors.email = ERROR_MESSAGES.EMAIL_INVALID;
     }
 
-    //validate birthDate
-    if (formData.birthDate) {
-      const birthDate = new Date(formData.birthDate);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
+    // Validate cedula (obligatorio)
+    if (!formData.cedula.trim()) {
+      newErrors.cedula = ERROR_MESSAGES.CEDULA_REQUIRED || 'La cédula es requerida';
+    } else if (!validateEcuadorCedula(formData.cedula)) {
+      newErrors.cedula = ERROR_MESSAGES.CEDULA_INVALID;
+    }
 
-      if (isNaN(birthDate.getTime())) {
-        newErrors.birthDate = 'Fecha inválida';
-      } else if (age < 5) {
-        newErrors.birthDate = 'Debes tener al menos 5 años';
-      } else if (age > 120) {
-        newErrors.birthDate = 'Fecha inválida';
+    // Validate edad (obligatorio)
+    if (!formData.edad.trim()) {
+      newErrors.edad = ERROR_MESSAGES.EDAD_REQUIRED || 'La edad es requerida';
+    } else {
+      const edadNum = parseInt(formData.edad);
+      if (isNaN(edadNum) || !validateEdad(edadNum)) {
+        newErrors.edad = ERROR_MESSAGES.EDAD_INVALID;
       }
     }
 
-    //validate profesión 
-    if (formData.profession && formData.profession.length > 100) {
-      newErrors.profession = 'Máximo 100 caracteres';
+    // Validate sector (obligatorio)
+    if (!formData.sector.trim()) {
+      newErrors.sector = ERROR_MESSAGES.SECTOR_REQUIRED || 'El sector es requerido';
+    } else if (!validateSector(formData.sector)) {
+      newErrors.sector = ERROR_MESSAGES.SECTOR_TOO_LONG;
     }
 
     setErrors(newErrors);
@@ -428,73 +377,40 @@ export function RegistrationPage() {
     }
   };
 
-  // Handle drag end
-  const onDragEnd = (result: DropResult) => {
-    const { source, destination } = result;
-    // Dropped outside the list
-    if (!destination) return;
-    // Reordering within the same list
-    if (source.droppableId === destination.droppableId) {
-      const items =
-        source.droppableId === 'available-sports' ?
-          Array.from(availableSports) :
-          Array.from(selectedSports);
-      const [reorderedItem] = items.splice(source.index, 1);
-      items.splice(destination.index, 0, reorderedItem);
-      if (source.droppableId === 'available-sports') {
-        setAvailableSports(items);
-      } else {
-        setSelectedSports(items);
-      }
-      return;
+  // Handle cedula input with formatting
+  const handleCedulaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatEcuadorCedula(e.target.value);
+    setFormData({ ...formData, cedula: formatted });
+
+    // Clear error when user starts typing
+    if (errors.cedula) {
+      setErrors({ ...errors, cedula: '' });
     }
-    // Moving from available to selected
-    if (
-      source.droppableId === 'available-sports' &&
-      destination.droppableId === 'selected-sports') {
-      const sourceItems = Array.from(availableSports);
-      const destItems = Array.from(selectedSports);
-      const [movedItem] = sourceItems.splice(source.index, 1);
-      
-      // Logic for "Ninguno"
-      if (movedItem.id === 'ninguno') {
-        // Block "Ninguno" if there are already sports selected
-        if (destItems.length > 0) {
-          // Return the item to available sports without selecting it
-          return;
-        }
-        // If "Ninguno" is selected, clear all other selections and move them back to available
-        const allSelected = [...destItems];
-        setAvailableSports([...sourceItems, ...allSelected]);
-        setSelectedSports([movedItem]);
+  };
+
+  // Handle sport selection with checkbox
+  const handleSportToggle = (sportId: string) => {
+    if (sportId === 'ninguno') {
+      // If "Ninguno" is selected, clear all other selections
+      if (selectedSports.includes('ninguno')) {
+        setSelectedSports([]);
+      } else {
+        setSelectedSports(['ninguno']);
+      }
+    } else {
+      // If selecting a sport
+      if (selectedSports.includes(sportId)) {
+        // Deselect the sport
+        setSelectedSports(selectedSports.filter(id => id !== sportId));
       } else {
         // Check if limit of 3 sports is reached
-        if (destItems.length >= 3) {
-          // Return the item to available sports without selecting it
+        if (selectedSports.length >= 3 && !selectedSports.includes('ninguno')) {
           return;
         }
-        
-        // If a sport is selected, remove "Ninguno" from selected if present
-        const noneIndex = destItems.findIndex((item) => item.id === 'ninguno');
-        if (noneIndex > -1) {
-          const [noneItem] = destItems.splice(noneIndex, 1);
-          sourceItems.push(noneItem);
-        }
-        destItems.splice(destination.index, 0, movedItem);
-        setAvailableSports(sourceItems);
-        setSelectedSports(destItems);
+        // Remove "Ninguno" if present and add the new sport
+        const newSelection = selectedSports.filter(id => id !== 'ninguno');
+        setSelectedSports([...newSelection, sportId]);
       }
-    }
-    // Moving from selected to available (removing)
-    if (
-      source.droppableId === 'selected-sports' &&
-      destination.droppableId === 'available-sports') {
-      const sourceItems = Array.from(selectedSports);
-      const destItems = Array.from(availableSports);
-      const [movedItem] = sourceItems.splice(source.index, 1);
-      destItems.splice(destination.index, 0, movedItem);
-      setSelectedSports(sourceItems);
-      setAvailableSports(destItems);
     }
   };
   // Handle form submission
@@ -502,16 +418,20 @@ export function RegistrationPage() {
     setIsSubmitting(true);
 
     try {
-      const sportsLabels = selectedSports.map((s) => s.label);
+      const sportsLabels = selectedSports.length > 0 
+        ? selectedSports.map(id => AVAILABLE_SPORTS.find(s => s.id === id)?.label || '')
+        : [];
+      const fullEmail = formData.emailUsername + formData.emailDomain;
+      
       const newTicket = await addRegistration(
         formData.firstName,
         formData.lastName,
         formData.phone,
-        formData.email,
+        fullEmail,
         sportsLabels,
-        formData.birthDate || undefined,
-        formData.gender || undefined,
-        formData.profession || undefined
+        formData.cedula,
+        parseInt(formData.edad),
+        formData.sector
       );
 
       setTicketData(newTicket);
@@ -559,21 +479,21 @@ export function RegistrationPage() {
       firstName: '',
       lastName: '',
       phone: '',
-      email: '',
-      birthDate: '',
-      gender: '',
-      profession: ''
+      emailUsername: '',
+      emailDomain: '@gmail.com',
+      cedula: '',
+      edad: '',
+      sector: ''
     });
     setErrors({
       firstName: '',
       lastName: '',
       phone: '',
       email: '',
-      birthDate: '',
-      gender: '',
-      profession: ''
+      cedula: '',
+      edad: '',
+      sector: ''
     });
-    setAvailableSports(AVAILABLE_SPORTS);
     setSelectedSports([]);
     setStep(1);
     setTicketData(null);
@@ -624,7 +544,7 @@ export function RegistrationPage() {
                 Regístrate en Warmi PowerFest
               </h1>
               <p className="text-lg text-gray-600">
-                ¡El evento deportivo más divertido del año!
+                ¡El evento más inspirador del año!
               </p>
             </div>
 
@@ -633,7 +553,7 @@ export function RegistrationPage() {
                 <Mail className="w-4 h-4" />
               </div>
               <p className="text-sm text-blue-800">
-                <strong>Importante:</strong> Los datos que ingreses serán utilizados para generar tu QR de entrada que te llegará al correo electrónico.
+                <strong>Importante:</strong> Asegúrate de ingresar información verificada; recibirás tu código QR de acceso directamente en tu correo electrónico, preséntalo al ingresar al evento y recibir tu Pasaporte Warmi y participa por increíbles premios.
               </p>
             </div>
 
@@ -691,92 +611,91 @@ export function RegistrationPage() {
                   )}
                 </div>
 
-
-                <FestivalInput
+                <EmailInput
                   label="Correo Electrónico"
-                  type="email"
-                  placeholder="alex@ejemplo.com"
-                  value={formData.email}
-                  onChange={(e) => {
-                    setFormData({
-                      ...formData,
-                      email: e.target.value
-                    });
+                  username={formData.emailUsername}
+                  domain={formData.emailDomain}
+                  onUsernameChange={(value) => {
+                    setFormData({ ...formData, emailUsername: value });
+                    if (errors.email) {
+                      setErrors({ ...errors, email: '' });
+                    }
+                  }}
+                  onDomainChange={(value) => {
+                    setFormData({ ...formData, emailDomain: value });
                     if (errors.email) {
                       setErrors({ ...errors, email: '' });
                     }
                   }}
                   error={errors.email}
-                  required />
+                  required
+                />
 
                 <div>
                   <FestivalInput
-                    label="Fecha de Nacimiento"
-                    type="date"
-                    value={formData.birthDate}
-                    onChange={(e) => {
-                      setFormData({ ...formData, birthDate: e.target.value });
-                      if (errors.birthDate) {
-                        setErrors({ ...errors, birthDate: '' });
-                      }
-                    }}
-                    max={new Date().toISOString().split('T')[0]}
-                    className={`w-full px-4 py-3 rounded-xl border-2 transition-colors ${errors.birthDate
-                      ? 'border-red-300 focus:border-red-500'
-                      : 'border-gray-200 focus:border-magenta'
-                      }`}
-                  />
-                  {errors.birthDate && (
-                    <p className="text-red-500 text-sm mt-1">{errors.birthDate}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Género
-                  </label>
-                  <select
-                    value={formData.gender}
-                    onChange={(e) => {
-                      setFormData({
-                        ...formData,
-                        gender: e.target.value as typeof formData.gender
-                      });
-                    }}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-magenta transition-colors"
-                  >
-                    <option value="">Selecciona una opción</option>
-                    <option value="MALE">Masculino</option>
-                    <option value="FEMALE">Femenino</option>
-                    <option value="OTHER">Otro</option>
-                    <option value="PREFER_NOT_TO_SAY">Prefiero no decir</option>
-                  </select>
-                </div>
-
-                <div>
-                  <FestivalInput
-                    label="Profesión"
+                    label="Cédula"
                     type="text"
-                    placeholder="ej. Ingeniero, Estudiante, etc."
-                    value={formData.profession}
-                    onChange={(e) => {
-                      setFormData({ ...formData, profession: e.target.value });
-                      if (errors.profession) {
-                        setErrors({ ...errors, profession: '' });
-                      }
-                    }}
-                    maxLength={100}
-                    className={`w-full px-4 py-3 rounded-xl border-2 transition-colors ${errors.profession
-                      ? 'border-red-300 focus:border-red-500'
-                      : 'border-gray-200 focus:border-magenta'
-                      }`}
+                    placeholder="1234567890"
+                    value={formData.cedula}
+                    onChange={handleCedulaChange}
+                    error={errors.cedula}
+                    maxLength={10}
+                    required
                   />
-                  {errors.profession && (
-                    <p className="text-red-500 text-sm mt-1">{errors.profession}</p>
+                  {!errors.cedula && (
+                    <p className="text-xs text-gray-500 mt-1 ml-1">
+                      Ingresa 10 dígitos de tu cédula ecuatoriana
+                    </p>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    {formData.profession.length}/100 caracteres
-                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <FestivalInput
+                      label="Edad"
+                      type="number"
+                      placeholder="25"
+                      value={formData.edad}
+                      onChange={(e) => {
+                        setFormData({ ...formData, edad: e.target.value });
+                        if (errors.edad) {
+                          setErrors({ ...errors, edad: '' });
+                        }
+                      }}
+                      error={errors.edad}
+                      min={5}
+                      max={120}
+                      required
+                    />
+                    {!errors.edad && (
+                      <p className="text-xs text-gray-500 mt-1 ml-1">
+                        Entre 5 y 120 años
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <FestivalInput
+                      label="Sector donde vive"
+                      type="text"
+                      placeholder="ej. Norte, Centro, Sur"
+                      value={formData.sector}
+                      onChange={(e) => {
+                        setFormData({ ...formData, sector: e.target.value });
+                        if (errors.sector) {
+                          setErrors({ ...errors, sector: '' });
+                        }
+                      }}
+                      error={errors.sector}
+                      maxLength={100}
+                      required
+                    />
+                    {!errors.sector && (
+                      <p className="text-xs text-gray-500 mt-1 ml-1">
+                        {formData.sector.length}/100 caracteres
+                      </p>
+                    )}
+                  </div>
                 </div>
 
 
@@ -814,142 +733,59 @@ export function RegistrationPage() {
                 ¿Cuáles son tus deportes favoritos?
               </h1>
               <p className="text-lg text-gray-600">
-                Arrastra los deportes que te gustan al área de selección (máximo 3)
+                Selecciona hasta 3 deportes (opcional)
               </p>
-              {selectedSports.length > 0 && selectedSports[0].id !== 'ninguno' && (
+              {selectedSports.length > 0 && !selectedSports.includes('ninguno') && (
                 <p className="text-sm text-magenta font-medium mt-2">
                   {selectedSports.length}/3 deportes seleccionados
                 </p>
               )}
             </div>
 
-            <DragDropContext onDragEnd={onDragEnd}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Available Sports */}
-                <div className="space-y-4">
-                  <h3 className="font-bold text-gray-500 uppercase text-sm tracking-wider mb-4">
-                    Deportes Disponibles
-                  </h3>
-                  <Droppable droppableId="available-sports">
-                    {(provided, snapshot) =>
-                      <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className={`
-                          min-h-[300px] p-4 rounded-2xl border-2 border-dashed transition-colors duration-200
-                          ${snapshot.isDraggingOver ? 'border-magenta bg-magenta/5' : 'border-gray-200 bg-gray-50'}
-                        `}>
+            <FestivalCard className="border-t-4 border-t-violet shadow-xl">
+              <div className="space-y-3">
+                {AVAILABLE_SPORTS.map((sport) => {
+                  const isSelected = selectedSports.includes(sport.id);
+                  const isNinguno = sport.id === 'ninguno';
+                  const isDisabled = 
+                    (isNinguno && selectedSports.length > 0 && !isSelected) ||
+                    (!isNinguno && selectedSports.includes('ninguno')) ||
+                    (!isSelected && selectedSports.length >= 3 && !selectedSports.includes('ninguno'));
 
-                        {availableSports.map((sport, index) => {
-                          // Disable "Ninguno" if there are sports selected
-                          const isNingunoDisabled = sport.id === 'ninguno' && selectedSports.length > 0;
-                          // Disable all sports if 3 are already selected (except "Ninguno")
-                          const isLimitReached = selectedSports.length >= 3 && sport.id !== 'ninguno';
-                          const isDisabled = isNingunoDisabled || isLimitReached;
-                          
-                          return (
-                            <Draggable
-                              key={sport.id}
-                              draggableId={sport.id}
-                              index={index}
-                              isDragDisabled={isDisabled}>
-
-                              {(provided, snapshot) =>
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className={`
-                                    bg-white p-4 mb-3 rounded-xl shadow-sm border-l-4 ${sport.color}
-                                    flex items-center gap-3 transition-all
-                                    ${isDisabled 
-                                      ? 'opacity-40 cursor-not-allowed' 
-                                      : 'cursor-grab active:cursor-grabbing hover:shadow-md'
-                                    }
-                                    ${snapshot.isDragging ? 'scale-105 shadow-xl rotate-2 z-50' : ''}
-                                  `}
-                                  style={provided.draggableProps.style}>
-
-                                  <span className="text-2xl">{sport.emoji}</span>
-                                  <span className="font-bold text-gray-800">
-                                    {sport.label}
-                                  </span>
-                                  {isDisabled && (
-                                    <span className="ml-auto text-xs text-gray-400 font-medium">
-                                      {isNingunoDisabled ? 'Bloqueado' : 'Límite alcanzado'}
-                                    </span>
-                                  )}
-                                  {!isDisabled && <GripVertical className="ml-auto text-gray-300 w-5 h-5" />}
-                                </div>
-                              }
-                            </Draggable>
-                          );
-                        })}
-                        {provided.placeholder}
-                      </div>
-                    }
-                  </Droppable>
-                </div>
-
-                {/* Selected Sports */}
-                <div className="space-y-4">
-                  <h3 className="font-bold text-magenta uppercase text-sm tracking-wider mb-4">
-                    Tu Selección
-                  </h3>
-                  <Droppable droppableId="selected-sports">
-                    {(provided, snapshot) =>
-                      <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className={`
-                          min-h-[300px] p-4 rounded-2xl border-2 transition-colors duration-200 relative
-                          ${snapshot.isDraggingOver ? 'border-violet bg-violet/5' : 'border-violet/30 bg-white'}
-                        `}>
-
-                        {selectedSports.length === 0 &&
-                          !snapshot.isDraggingOver &&
-                          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
-                            <Dumbbell className="w-12 h-12 mb-2 opacity-20" />
-                            <p className="text-sm font-medium">
-                              Suelta aquí tus deportes favoritos
-                            </p>
-                          </div>
+                  return (
+                    <label
+                      key={sport.id}
+                      className={`
+                        flex items-center gap-4 p-4 rounded-xl border-l-4 ${sport.color}
+                        transition-all cursor-pointer
+                        ${isSelected 
+                          ? 'bg-gradient-to-r from-magenta/5 to-violet/5 border-2 border-magenta shadow-md' 
+                          : 'bg-white border border-gray-200 hover:shadow-md'
                         }
-
-                        {selectedSports.map((sport, index) =>
-                          <Draggable
-                            key={sport.id}
-                            draggableId={sport.id}
-                            index={index}>
-
-                            {(provided, snapshot) =>
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={`
-                                  bg-white p-4 mb-3 rounded-xl shadow-sm border border-gray-100
-                                  flex items-center gap-3 cursor-grab active:cursor-grabbing
-                                  ${snapshot.isDragging ? 'scale-105 shadow-xl rotate-2 z-50' : ''}
-                                `}
-                                style={provided.draggableProps.style}>
-
-                                <span className="text-2xl">{sport.emoji}</span>
-                                <span className="font-bold text-gray-800">
-                                  {sport.label}
-                                </span>
-                                <GripVertical className="ml-auto text-gray-300 w-5 h-5" />
-                              </div>
-                            }
-                          </Draggable>
-                        )}
-                        {provided.placeholder}
-                      </div>
-                    }
-                  </Droppable>
-                </div>
+                        ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
+                      `}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => !isDisabled && handleSportToggle(sport.id)}
+                        disabled={isDisabled}
+                        className="w-5 h-5 text-magenta rounded border-gray-300 focus:ring-magenta focus:ring-2 cursor-pointer disabled:cursor-not-allowed"
+                      />
+                      <span className="text-2xl">{sport.emoji}</span>
+                      <span className={`font-bold ${isSelected ? 'text-magenta' : 'text-gray-800'}`}>
+                        {sport.label}
+                      </span>
+                      {isDisabled && !isSelected && (
+                        <span className="ml-auto text-xs text-gray-400 font-medium">
+                          {isNinguno ? 'Bloqueado' : selectedSports.includes('ninguno') ? 'Bloqueado' : 'Límite alcanzado'}
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
-            </DragDropContext>
+            </FestivalCard>
 
             <div className="pt-8 flex justify-between items-center">
               <FestivalButton
@@ -963,8 +799,7 @@ export function RegistrationPage() {
               <FestivalButton
                 onClick={handleSubmit}
                 size="lg"
-                isLoading={isSubmitting}
-                disabled={selectedSports.length === 0}>
+                isLoading={isSubmitting}>
 
                 {isSubmitting ? 'Generando...' : 'Completar Registro'}{' '}
                 <Sparkles className="w-5 h-5 ml-2" />
@@ -1137,23 +972,13 @@ export function RegistrationPage() {
 
                     {/* Action Buttons */}
                     <div className="ml-9 space-y-2">
-                      <div className="flex flex-wrap gap-3">
-                        <button
-                          onClick={handleOpenWhatsAppModal}
-                          className="text-sm font-medium text-violet hover:text-violet/80 underline transition-colors flex items-center gap-1"
-                        >
-                          <Phone className="w-4 h-4" />
-                          Enviar por WhatsApp
-                        </button>
-
-                        <button
-                          onClick={handleOpenAltEmailModal}
-                          className="text-sm font-medium text-magenta hover:text-magenta/80 underline transition-colors flex items-center gap-1"
-                        >
-                          <Mail className="w-4 h-4" />
-                          Enviar por otro correo
-                        </button>
-                      </div>
+                      <button
+                        onClick={handleOpenAltEmailModal}
+                        className="text-sm font-medium text-magenta hover:text-magenta/80 underline transition-colors flex items-center gap-1"
+                      >
+                        <Mail className="w-4 h-4" />
+                        Enviar por otro correo
+                      </button>
 
                       <button
                         onClick={handleResend}
@@ -1261,80 +1086,6 @@ export function RegistrationPage() {
                   fullWidth
                 >
                   {isSubmitting ? 'Guardando...' : 'Guardar y Reenviar'}
-                </FestivalButton>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* WhatsApp Modal */}
-      <AnimatePresence>
-        {showWhatsAppModal && ticketData && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowWhatsAppModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-violet/10 flex items-center justify-center">
-                  <Phone className="w-6 h-6 text-violet" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-extrabold text-gray-900">
-                    Enviar por WhatsApp
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Ingresa el número de teléfono
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div>
-                  <FestivalInput
-                    label="Número de WhatsApp"
-                    type="tel"
-                    placeholder="0990900990"
-                    value={whatsappPhone}
-                    onChange={handleWhatsAppPhoneChange}
-                    error={whatsappError}
-                    maxLength={10}
-                    required
-                  />
-                  {!whatsappError && (
-                    <p className="text-xs text-gray-500 mt-1 ml-1">
-                      Ingresa 10 dígitos, empezando con 09
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <FestivalButton
-                  variant="ghost"
-                  onClick={() => setShowWhatsAppModal(false)}
-                  disabled={isSendingWhatsApp}
-                  fullWidth
-                >
-                  Cancelar
-                </FestivalButton>
-                <FestivalButton
-                  onClick={handleSendWhatsApp}
-                  isLoading={isSendingWhatsApp}
-                  disabled={isSendingWhatsApp}
-                  fullWidth
-                >
-                  {isSendingWhatsApp ? 'Enviando...' : 'Enviar QR'}
                 </FestivalButton>
               </div>
             </motion.div>

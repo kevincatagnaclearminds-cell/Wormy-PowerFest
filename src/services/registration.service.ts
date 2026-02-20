@@ -9,9 +9,9 @@ export interface CreateRegistrationRequest {
   phone: string;
   email: string;
   sports: string[];
-  birthDate?: string;
-  gender?: 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY';
-  profession?: string;
+  cedula: string;
+  edad: number;
+  sector: string;
 }
 
 // Response types
@@ -22,9 +22,9 @@ export interface RegistrationResponse {
   phone: string;
   email: string;
   sports: string[];
-  birthDate: string | null;
-  gender: 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY' | null;
-  profession: string | null;
+  cedula: string | null;
+  edad: number | null;
+  sector: string | null;
   status: 'PENDING' | 'CHECKED_IN' | 'NO_SHOW';
   checkInTime: string | null;
   registrationDate: string;
@@ -125,22 +125,6 @@ export const registrationService = {
     return apiService.post(
       `${API_ENDPOINTS.GET_REGISTRATION_BY_ID(id)}/resend`,
       {}
-    );
-  },
-
-  /**
-   * Send QR via WhatsApp to a specific phone number
-   */
-  async sendWhatsApp(
-    id: string,
-    phone: string
-  ): Promise<ApiResponse<{
-    message: string;
-    notification: { sent: boolean; messageId?: string };
-  }>> {
-    return apiService.post(
-      `${API_ENDPOINTS.GET_REGISTRATION_BY_ID(id)}/send-whatsapp`,
-      { phone }
     );
   },
 

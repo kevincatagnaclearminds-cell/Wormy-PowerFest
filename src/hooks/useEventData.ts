@@ -130,9 +130,9 @@ export function useEventData() {
   phone: string,
   email: string,
   sports: string[],
-  birthDate?: string,  // ✨ NUEVO
-  gender?: 'MALE' | 'FEMALE' | 'OTHER' | 'PREFER_NOT_TO_SAY',  // ✨ NUEVO
-  profession?: string  // ✨ NUEVO
+  cedula: string,
+  edad: number,
+  sector: string
 ) => {
   const response = await registrationService.create({
     firstName,
@@ -140,9 +140,9 @@ export function useEventData() {
     phone,
     email,
     sports,
-    birthDate, 
-    gender,     
-    profession  
+    cedula,
+    edad,
+    sector
   });
 
     if (response.success && response.data) {
